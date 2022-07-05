@@ -2,10 +2,18 @@ const numbers = document.querySelectorAll('.rows .number');
 const operators = document.querySelectorAll('.operator');
 const result = document.querySelector('.result');
 const screen = document.querySelector('.display');
+const symbols = document.querySelector('.symbols');
+const exponential = document.querySelector('.exponential');
 
-let currentValue = 0;
+let screenNumber, exponentialNumber, previousOperator, currentOperator, currentValue, currentResult, isFloat, charLimit, operationNumber;
 let numbersArray = [];
-let previousOperator;
+
+currentValue = '0';
+currentResult = 0;
+isFloat = false;
+charLimit = 10;
+operationNumber = 0;
+
 
 function add(a,b) {
     return a + b;
@@ -27,58 +35,30 @@ function operate(operator,a,b) {
     return operator(a,b);
 }
 
-function displayNumber() {
-  
-    let scroll = 0;
+function erase() {
+    if (currentValue === '0' && this.outerText != '.') return;
 
-    if ((currentValue.toString().includes('.')) && 
-        (this.outerText === '.')) return;
+    currentValue = currentValue.substring(0, currentValue.length - 1);
 
-
-    if ((currentValue === 0 || currentValue === '0') && this.outerText === '.') {
-        currentValue = '0.'
-        screen.textContent = currentValue;
-        return
+    if (currentValue.length === 0) {
+        currentValue = '0';
     }
+    screen.textContent = currentValue;
 
-    else if (currentValue === 0 || currentValue === '0') {
-        currentValue = this.outerText;
-        screen.textContent = currentValue;
-        return
-    }
+}
 
-    currentValue += this.outerText;
-
-    console.log(screen.textContent.includes('.'));
-    if (screen.textContent.includes('.')) {
-        console.log(currentValue.length);
-        if (screen.textContent.substring(0,1) === '.') {
-            scroll = currentValue.length - 10;
-            screen.textContent = currentValue.substring(scroll, 10 + scroll);
-            return
-        }
-
-        if (currentValue.length > 10) {
-            scroll = currentValue.length - 11;
-            console.log(scroll);
-        }
-        console.log(currentValue.substring(scroll, 11 + scroll));
-        screen.textContent = currentValue.substring(scroll, 11 + scroll);
-        return;
-    }
-    if ((currentValue.length > 10) && (!screen.textContent.includes('.'))) {
-        scroll = currentValue.length - 10;
-        screen.textContent = currentValue.substring(scroll, 10 + scroll);
-        return
-    }
-
-    screen.textContent = currentValue.substring(scroll, 10 + scroll);
-    
+function reset() {
+    currentValue = '0';
+    currentResult = 0;
+    operationNumber = 0;
+    previousOperator = null;
+    numbersArray = [];
+    screen.textContent = currentValue;
 }
 
 function storeOperator() {
 
-    console.log(previousOperator);
+    operationNumber += 1;
     
     switch (this.outerText) {
         case '÷':
@@ -95,66 +75,81 @@ function storeOperator() {
             break;
     }
     
-    numbersArray.push(parseFloat(currentValue)); 
-
-    console.log(numbersArray);
-
-    screen.style.cssText = 'color: rgba(0, 0, 0, 0);'
-    
-    if (numbersArray.length === 1) {
-        previousOperator = operator;
-        currentValue = 0;
-        setTimeout(() => {screen.style.cssText = 'color: rgba(0, 0, 0, 1);'},75);
-        return operator;
-    }
-
-    const partialResult = operate(previousOperator, numbersArray[0], numbersArray[1]);  
-
-    if (partialResult.length > 9) {
-        const exceeding = partialResult.length - 8;
-
-    }
-
-    screen.textContent = partialResult;8
-
-    numbersArray.shift();
-    numbersArray[0] = partialResult;
-    currentValue = 0;
-
-    setTimeout(() => {screen.style.cssText = 'color: rgba(0, 0, 0, 1);'},75);
-
+    submit(false);
     previousOperator = operator;
-    return operator;
+    currentValue = '0';
 }
 
 
-function erase() {
-    if (currentValue === 0 || (currentValue === '0' && this.outerText != '.')) return;
-    currentValue = currentValue.substring(0, currentValue.length - 1);
-    if (currentValue.length === 0) {
-        currentValue = 0;
+function storeNumber() {
+
+    if ((currentValue.toString().includes('.')) && (this.outerText === '.')) return;
+
+    if (currentValue === '0' && this.outerText === '.') {
+        currentValue = '0.'
+        screen.textContent = currentValue;
+        return;
     }
-    screen.textContent = currentValue;
+
+    else if (currentValue === '0') {
+        currentValue = this.outerText;
+        screen.textContent = currentValue;
+        return;
+    }
+    currentValue += this.outerText;
+
+    populateScreen(currentValue);
 
 }
 
+function submit(result) {
 
-function reset() {
-    currentValue = 0;
-    numbersArray = [];
-    screen.textContent = currentValue;
+    operationNumber += 1;
+
+    if (operationNumber <= 2) {
+        currentResult = parseFloat(currentValue);
+        populateScreen(currentResult.toString())
+        currentValue = '0';
+        return
+    }
+
+    currentResult = operate((previousOperator ?? operator),currentResult,parseFloat(currentValue));
+    currentValue = '0';
+
+    if ((currentResult > 10**9) && (result != false)){
+        let decimal = currentResult.toString().substring(2,10);
+        if (parseFloat(decimal) === 0) {
+            populateScreen('1.0');
+        }
+        else {
+            populateScreen(`
+                ${currentResult.toString().substring(0,1)}.${decimal}`
+            )
+        }
+    }
+    else {
+        populateScreen(currentResult.toString());
+    }
 }
 
-function submit() {
-    numbersArray.push(parseFloat(currentValue));
-    const partialResult = operate(operator, numbersArray[0], numbersArray[1]);        
-    screen.textContent = partialResult;
-    numbersArray.shift();
-    numbersArray[0] = partialResult;
-    
-    currentValue = 0;
+function populateScreen(number) {
+
+    charLimit = (
+        (screen.textContent.includes('.') && screen.textContent.substring(0,1) != '.') ||
+        (number.substring(number.length - 1, number.length) === '.')
+        ) ? 11 : 10;
+
+    if (number.length > charLimit) {
+        screen.textContent = number.substring(
+            number.length - charLimit, number.length
+        )
+    }
+
+    else {
+        screen.textContent = number;
+    }
+
 }
 
-
-numbers.forEach(number => number.addEventListener("click", displayNumber));
+numbers.forEach(number => number.addEventListener("click",storeNumber));
 operators.forEach(operator => operator.addEventListener("click", storeOperator));
